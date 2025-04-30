@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('TPropertyVisits', function (Blueprint $table) {
-            $table->id('PropertyVisitId');
+            $table->bigIncrements('PropertyVisitId');
             $table->unsignedBigInteger('PropertyId');
             $table->unsignedBigInteger('UserId')->nullable();
             $table->string('name');
@@ -24,6 +24,8 @@ return new class extends Migration
             $table->date('visitDate');
             $table->time('visitHour');
             $table->string('ipAddress');
+            $table->string('cancellation_reason')->nullable();
+            $table->enum('status', ['pending', 'validated', 'cancelled'])->default('pending');
 
         });
     }

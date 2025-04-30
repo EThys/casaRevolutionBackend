@@ -28,6 +28,7 @@ class Property extends Model
         'bedrooms',
         'floor',
         'address',
+        'commune',
         'city',
         'postalCode',
         'sold',
@@ -63,7 +64,7 @@ class Property extends Model
 
     public function images()
     {
-        return $this->hasMany(PropertyImage::class);
+        return $this->hasMany(PropertyImage::class,'PropertyId');
     }
 
     public function favorites()

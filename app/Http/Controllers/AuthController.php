@@ -23,13 +23,10 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:TUsers',
             'password' => 'required',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
+            'TypeAccountId' => 'required|integer|in:1,2,3,4',
+            'CityId' => 'int',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
@@ -44,20 +41,18 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
+                'errors' => implode(' ', $validator->errors()->all())
             ], 422);
         }
 
         try {
             $userData = [
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'city' => $request->city,
+                'CityId' => $request->CityId,
+                'username' => $request->first_name . $request->last_name,
                 'postal_code' => $request->postal_code,
+                'TypeAccountId' => $request->TypeAccountId,
                 'country' => $request->country,
                 'date_of_birth' => $request->date_of_birth ? Carbon::parse($request->date_of_birth) : null,
                 'gender' => $request->gender,
@@ -80,6 +75,41 @@ class AuthController extends Controller
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
+            switch ($request->TypeAccountId) {
+                case 1: {
+                        $request->merge(['UserId' => $user->UserId]);
+                        $data = (new BailleurController())->store($request, true);
+                        if ($data['error'] !== null) {
+                            if ($data['error'] != "") {
+                                User::destroy($user->UserId);
+                                return response()->json([
+                                    "message" => $data['error']
+                                ], 422);
+                            }
+                        }
+                    }
+                case 2: {
+                        $request->merge(['UserId' => $user->UserId]);
+                        $data = (new LocataireController())->store($request, true);
+                        if ($data['error'] != "") {
+                            User::destroy($user->UserId);
+                            return response()->json([
+                                "message" => $data['error']
+                            ], 422);
+                        }
+                    }
+                case 3: {
+                        $request->merge(['UserId' => $user->UserId]);
+                        $data = (new CommissionnaireController())->store($request, true);
+                        if ($data['error'] != "") {
+                            User::destroy($user->UserId);
+                            return response()->json([
+                                "message" => $data['error']
+                            ], 422);
+                        }
+                    }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Utilisateur enregistré avec succès',
@@ -89,7 +119,6 @@ class AuthController extends Controller
                     'token_type' => 'Bearer'
                 ]
             ], 201);
-
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'enregistrement : ' . $e->getMessage());
             return response()->json([
@@ -131,7 +160,7 @@ class AuthController extends Controller
     /**
      * Connexion de l'utilisateur
      */
-        public function login(Request $request)
+    public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required', // Suppression de la validation 'email'
@@ -142,7 +171,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => $validator->errors()
+                'errors' => implode(' ', $validator->errors()->all())
             ], 422);
         }
 
@@ -175,7 +204,6 @@ class AuthController extends Controller
                     'token_type' => 'Bearer'
                 ]
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur de connexion : ' . $e->getMessage());
             return response()->json([
@@ -217,7 +245,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:TUsers,email,'.$user->id,
+            'email' => 'sometimes|string|email|max:255|unique:TUsers,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
@@ -239,9 +267,17 @@ class AuthController extends Controller
 
         try {
             $updateData = $request->only([
-                'first_name', 'last_name', 'email', 'phone',
-                'address', 'city', 'postal_code', 'country',
-                'date_of_birth', 'gender', 'bio'
+                'first_name',
+                'last_name',
+                'email',
+                'phone',
+                'address',
+                'city',
+                'postal_code',
+                'country',
+                'date_of_birth',
+                'gender',
+                'bio'
             ]);
 
             // Gestion de l'image de profil en base64
@@ -266,7 +302,6 @@ class AuthController extends Controller
                 'message' => 'Profil mis à jour avec succès',
                 'data' => $user
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur de mise à jour du profil : ' . $e->getMessage());
             return response()->json([
@@ -288,7 +323,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Déconnexion réussie'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur de déconnexion : ' . $e->getMessage());
             return response()->json([
@@ -334,7 +368,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Mot de passe changé avec succès'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur de changement de mot de passe : ' . $e->getMessage());
             return response()->json([
@@ -369,7 +402,6 @@ class AuthController extends Controller
             return $status === Password::RESET_LINK_SENT
                 ? response()->json(['success' => true, 'message' => 'Lien de réinitialisation envoyé avec succès'])
                 : response()->json(['success' => false, 'message' => 'Impossible d\'envoyer le lien de réinitialisation'], 400);
-
         } catch (\Exception $e) {
             Log::error('Erreur de demande de réinitialisation : ' . $e->getMessage());
             return response()->json([
@@ -415,7 +447,6 @@ class AuthController extends Controller
             return $status === Password::PASSWORD_RESET
                 ? response()->json(['success' => true, 'message' => 'Mot de passe réinitialisé avec succès'])
                 : response()->json(['success' => false, 'message' => 'Impossible de réinitialiser le mot de passe'], 400);
-
         } catch (\Exception $e) {
             Log::error('Erreur de réinitialisation : ' . $e->getMessage());
             return response()->json([
@@ -448,7 +479,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Compte supprimé avec succès'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Erreur de suppression du compte : ' . $e->getMessage());
             return response()->json([

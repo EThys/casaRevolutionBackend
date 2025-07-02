@@ -15,16 +15,14 @@ return new class extends Migration
             $table->id("LocataireId");
             $table->unsignedBigInteger('UserId');
             $table->unsignedBigInteger('TypeCardId');
-            $table->unsignedBigInteger('TypeAccountId');
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('phone')->nullable();
-            $table->string('email')->nullable();
-            $table->string('number_card')->nullable();
+            $table->string('fullname')->unique();
+            $table->string('phone')->nullable()->unique();
+            $table->string('email')->nullable()->unique();
+            $table->string('number_card')->nullable()->unique();
             $table->string('address')->nullable();
             $table->string('images')->nullable();
-            $table->string('date_of_birth')->nullable();
-            $table->string('password')->nullable();
             $table->timestamps();
         });
     }

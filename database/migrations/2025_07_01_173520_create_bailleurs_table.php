@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('TBailleurs', function (Blueprint $table) {
             $table->id("BailleurId");
-            $table->unsignedBigInteger('ParrainId');
+            $table->unsignedBigInteger('ParrainId')->nullable();
+            $table->unsignedBigInteger('UserId');
             $table->unsignedBigInteger('TypeCardId');
             $table->string('first_name');
             $table->string('last_name');

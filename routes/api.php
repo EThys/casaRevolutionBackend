@@ -7,6 +7,11 @@ use App\Http\Controllers\PropertyVisitController;
 use App\Http\Controllers\PropertyFeatureController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BailleurController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\CommissionnaireController;
+use App\Http\Controllers\CommuneController;
+use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\LocataireController;
 use App\Http\Controllers\PropertyTypeController;
 use App\Http\Controllers\TypeCardController;
 
@@ -32,6 +37,16 @@ Route::get('propertyType/{propertyTypeId}/properties', [PropertyTypeController::
 
 //ROUTES POUR BAILLEUR parrainage
 Route::resource('bailleur', BailleurController::class)->only(['index', 'store']);
+//ROUTES POUR Locataire
+Route::resource('locataire', LocataireController::class)->only(['index', 'store']);
+//ROUTES POUR Commissionnaire
+Route::resource('commissionnaire', CommissionnaireController::class)->only(['index', 'store']);
+//ROUTES POUR City
+Route::resource('city', CityController::class)->only(['index']);
+//ROUTES POUR Commune
+Route::resource('commune', CommuneController::class)->only(['index']);
+//ROUTES POUR Districts
+Route::resource('district', DistrictController::class)->only(['index']);
 //ROUTES POUR TypeCard
 Route::resource('type-card', TypeCardController::class)->only(['index']);
 Route::middleware('auth:sanctum')->group(function () {

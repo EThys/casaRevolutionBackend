@@ -14,17 +14,21 @@ class Locataire extends Model
     protected $fillable = [
         'first_name',
         'last_name',
+        'fullname',
         'phone',
         'email',
         'address',
         'images',
         'UserId',
-        'TypeAccountId',
-        'password',
-        'date_of_birth',
+        'TypeCardId',
+        'number_card',
     ];
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'UserId', 'UserId');
+    }
+    public function type_card(): BelongsTo
+    {
+        return $this->belongsTo(TypeCard::class, 'TypeCardId', 'TypeCardId');
     }
 }

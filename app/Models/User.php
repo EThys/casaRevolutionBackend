@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Models\Bailleur;
 use App\Models\Property;
+use App\Models\Locataire;
 use App\Models\PropertyVisit;
+use App\Models\Commissionnaire;
 use App\Models\PropertyFavorite;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
@@ -21,12 +23,10 @@ class User extends Authenticatable
 
 
     protected $fillable = [
-        'first_name',
-        'last_name',
+        'TypeAccountId',
+        'username',
         'email',
-        'phone',
-        'address',
-        'city',
+        'CityId',
         'postal_code',
         'country',
         'date_of_birth',
@@ -74,6 +74,14 @@ class User extends Authenticatable
     public function bailleur()
     {
         return $this->hasMany(Bailleur::class);
+    }
+    public function locataire()
+    {
+        return $this->hasMany(Locataire::class);
+    }
+    public function commissionnaire()
+    {
+        return $this->hasMany(Commissionnaire::class);
     }
     // Accessor pour le nom complet
     public function getFullNameAttribute()

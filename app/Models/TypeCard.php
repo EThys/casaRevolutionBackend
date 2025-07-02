@@ -14,6 +14,6 @@ class TypeCard extends Model
 
     public function bailleur()
     {
-        return $this->hasMany(Bailleur::class);
+        return $this->hasMany(Bailleur::class, 'TypeCardId');
     }
 }

@@ -20,13 +20,18 @@ class Bailleur extends Model
         'address',
         'images',
         'ParrainId',
+        'UserId',
         'TypeCardId',
         'number_card',
         'note'
     ];
-    public function user(): BelongsTo
+    public function parrain(): BelongsTo
     {
         return $this->belongsTo(User::class, 'ParrainId', 'UserId');
+    }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'UserId', 'UserId');
     }
     public function type_card(): BelongsTo
     {

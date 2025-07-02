@@ -6,8 +6,14 @@ use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyVisitController;
 use App\Http\Controllers\PropertyFeatureController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BailleurController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\CommissionnaireController;
+use App\Http\Controllers\CommuneController;
+use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\LocataireController;
 use App\Http\Controllers\PropertyTypeController;
-
+use App\Http\Controllers\TypeCardController;
 
 //ROUTES POUR L'AUTHENTIFICATION
 Route::post('register', [AuthController::class, 'register']);
@@ -19,7 +25,7 @@ Route::post('reset-password', [AuthController::class, 'resetPassword']);
 Route::get('properties', [PropertyController::class, 'index']);
 Route::get('properties/{id}', [PropertyController::class, 'show']);
 
- //ROUTES POUR LES FONCTIONNALITES
+//ROUTES POUR LES FONCTIONNALITES
 Route::get('features', [PropertyFeatureController::class, 'index']);
 Route::get('features/{feature}', [PropertyFeatureController::class, 'show']);
 Route::get('features/{feature}/properties', [PropertyFeatureController::class, 'properties']);
@@ -29,6 +35,20 @@ Route::get('property', [PropertyTypeController::class, 'index']);
 Route::get('property/{propertyType}', [PropertyTypeController::class, 'show']);
 Route::get('propertyType/{propertyTypeId}/properties', [PropertyTypeController::class, 'getPropertiesByType']);
 
+//ROUTES POUR BAILLEUR parrainage
+Route::resource('bailleur', BailleurController::class)->only(['index', 'store']);
+//ROUTES POUR Locataire
+Route::resource('locataire', LocataireController::class)->only(['index', 'store']);
+//ROUTES POUR Commissionnaire
+Route::resource('commissionnaire', CommissionnaireController::class)->only(['index', 'store']);
+//ROUTES POUR City
+Route::resource('city', CityController::class)->only(['index']);
+//ROUTES POUR Commune
+Route::resource('commune', CommuneController::class)->only(['index']);
+//ROUTES POUR Districts
+Route::resource('district', DistrictController::class)->only(['index']);
+//ROUTES POUR TypeCard
+Route::resource('type-card', TypeCardController::class)->only(['index']);
 Route::middleware('auth:sanctum')->group(function () {
     //ROUTES POUR L'AUTHENTIFICATION
     Route::get('profile', [AuthController::class, 'profile']);
@@ -50,19 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
     //ROUTES POUR LES RESERVATIONS
     Route::get('visits/status/{status}', [PropertyVisitController::class, 'getByStatus']);
     Route::put('visits/{id}/status', [PropertyVisitController::class, 'changeStatus']);
-    Route::post('visit',[PropertyVisitController::class, 'store']);
+    Route::post('visit', [PropertyVisitController::class, 'store']);
 
     //ROUTES POUR LES PROPERTYTYPE
 
     Route::post('propertyType', [PropertyTypeController::class, 'store']);
     Route::put('propertyType/{propertyType}', [PropertyTypeController::class, 'update']);
     Route::delete('propertyType/{propertyType}', [PropertyTypeController::class, 'destroy']);
-
-
 });
-
-
-
-
-
-

@@ -2,35 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Bailleur;
+use Exception;
+use App\Models\Locataire;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-use Exception;
 
-class BailleurController extends Controller
+class LocataireController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
         try {
-            $data = Bailleur::with('user', 'type_card', 'parrain')->get();
+            $data = Locataire::with('user', 'type_card')->get();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Liste des bailleurs récupérées avec succès',
+                'message' => 'Liste des locataires récupérées avec succès',
                 'data' => $data
             ]);
         } catch (Exception $e) {
-            Log::error('Erreur lors de la récupération des bailleurs : ' . $e->getMessage());
+            Log::error('Erreur lors de la récupération des locataires : ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Échec de la récupération des bailleurs',
+                'message' => 'Échec de la récupération des locataires',
                 'error' => 'Une erreur inattendue est survenue'
             ], 500);
         }
@@ -49,7 +48,7 @@ class BailleurController extends Controller
      */
     public function store(Request $request, bool $sideEffect = false)
     {
-        $data['error'] = "";
+        $data['error'] = null;
         $data['sys']   = "";
         $validator = Validator::make(
             $request->all(),
@@ -62,9 +61,7 @@ class BailleurController extends Controller
                 'images'            => 'nullable|array',
                 'images.*.base64'   => 'required_with:images|nullable|string',
                 'images.*.isMain'   => 'boolean',
-                'ParrainId'         => 'int',
                 'UserId'            => 'int',
-                // 'ParrainId'         => 'required|exists:TUsers,UserId',
                 'number_card'       => 'string|unique:TBailleurs,number_card',
                 'note'              => 'string',
                 'TypeCardId'        => 'int',
@@ -97,9 +94,9 @@ class BailleurController extends Controller
                     'message' => 'Données d\'image base64 invalides'
                 ], 422);
             }
-            $imageName = 'bailleur_' . uniqid() . '.jpg';
+            $imageName = 'locataire_' . uniqid() . '.jpg';
             try {
-                Storage::disk('public')->put('bailleur/' . $imageName, $image);
+                Storage::disk('public')->put('locataire/' . $imageName, $image);
                 $path = 'properties/' . $imageName;
             } catch (Exception $e) {
                 Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
@@ -108,18 +105,18 @@ class BailleurController extends Controller
 
         $request['fullname'] = "$request->first_name $request->last_name";
         try {
-            $message = "Ce bailleur est déjà parrainé dans la plateforme";
-            if (count(Bailleur::where("fullname", $request['fullname'])->get()) == 0) {
-                $bailleur = (Bailleur::create($request->except(['images'])))->update(['images' => $path]);
-                if ($bailleur) {
+            $message = "Ce Locataire existe dans la plateforme";
+            if (count(Locataire::where("fullname", $request['fullname'])->get()) == 0) {
+                $locataire = (Locataire::create($request->except(['images'])))->update(['images' => $path]);
+                if ($locataire) {
                     if ($sideEffect) {
                         $data['error'] = "";
-                        $data['sys'] = "";
+                        $data['sys'] = Locataire::where("fullname", $request['fullname'])->get();
                         return $data;
                     }
                     return response()->json([
                         'success' => true,
-                        'message' => 'Bailleur parrainé avec succès'
+                        'message' => 'Locataire créée avec succès'
                     ], 201);
                 }
             }
@@ -132,14 +129,14 @@ class BailleurController extends Controller
                 'message' => $message
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Erreur de parrainnage  : ' . $e->getMessage());
+            Log::error('Erreur de Locataire  : ' . $e->getMessage());
         }
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Bailleur $bailleur)
+    public function show(Locataire $locataire)
     {
         //
     }
@@ -147,7 +144,7 @@ class BailleurController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Bailleur $bailleur)
+    public function edit(Locataire $locataire)
     {
         //
     }
@@ -155,7 +152,7 @@ class BailleurController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Bailleur $bailleur)
+    public function update(Request $request, Locataire $locataire)
     {
         //
     }
@@ -163,7 +160,7 @@ class BailleurController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Bailleur $bailleur)
+    public function destroy(Locataire $locataire)
     {
         //
     }

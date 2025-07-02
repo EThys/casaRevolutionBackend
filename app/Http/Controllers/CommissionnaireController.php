@@ -2,35 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Bailleur;
+use Exception;
 use Illuminate\Http\Request;
+use App\Models\Commissionnaire;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-use Exception;
 
-class BailleurController extends Controller
+class CommissionnaireController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
         try {
-            $data = Bailleur::with('user', 'type_card', 'parrain')->get();
+            $data = Commissionnaire::with('user', 'type_card')->get();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Liste des bailleurs récupérées avec succès',
+                'message' => 'Liste des commissionnaires récupérées avec succès',
                 'data' => $data
             ]);
         } catch (Exception $e) {
-            Log::error('Erreur lors de la récupération des bailleurs : ' . $e->getMessage());
+            Log::error('Erreur lors de la récupération des commissionnaires : ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Échec de la récupération des bailleurs',
+                'message' => 'Échec de la récupération des commissionnaires',
                 'error' => 'Une erreur inattendue est survenue'
             ], 500);
         }
@@ -49,7 +48,7 @@ class BailleurController extends Controller
      */
     public function store(Request $request, bool $sideEffect = false)
     {
-        $data['error'] = "";
+        $data['error'] = null;
         $data['sys']   = "";
         $validator = Validator::make(
             $request->all(),
@@ -62,9 +61,7 @@ class BailleurController extends Controller
                 'images'            => 'nullable|array',
                 'images.*.base64'   => 'required_with:images|nullable|string',
                 'images.*.isMain'   => 'boolean',
-                'ParrainId'         => 'int',
                 'UserId'            => 'int',
-                // 'ParrainId'         => 'required|exists:TUsers,UserId',
                 'number_card'       => 'string|unique:TBailleurs,number_card',
                 'note'              => 'string',
                 'TypeCardId'        => 'int',
@@ -76,8 +73,8 @@ class BailleurController extends Controller
         if ($validator->fails()) {
             $errors = $validator->errors();
             if ($sideEffect) {
-                $data['error'] = implode(' ', $validator->errors()->all()) ?? "";
-                return;
+                $data['error'] = implode(' ', $errors->all()) ?? "";
+                return $data;
             }
             return response()->json([
                 'success' => false,
@@ -99,7 +96,7 @@ class BailleurController extends Controller
             }
             $imageName = 'bailleur_' . uniqid() . '.jpg';
             try {
-                Storage::disk('public')->put('bailleur/' . $imageName, $image);
+                Storage::disk('public')->put('Commissionnaire/' . $imageName, $image);
                 $path = 'properties/' . $imageName;
             } catch (Exception $e) {
                 Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
@@ -108,18 +105,18 @@ class BailleurController extends Controller
 
         $request['fullname'] = "$request->first_name $request->last_name";
         try {
-            $message = "Ce bailleur est déjà parrainé dans la plateforme";
-            if (count(Bailleur::where("fullname", $request['fullname'])->get()) == 0) {
-                $bailleur = (Bailleur::create($request->except(['images'])))->update(['images' => $path]);
-                if ($bailleur) {
+            $message = "Ce Commissionnaire est déjà dans la plateforme";
+            if (count(Commissionnaire::where("fullname", $request['fullname'])->get()) == 0) {
+                $commissionnaire = (Commissionnaire::create($request->except(['images'])))->update(['images' => $path]);
+                if ($commissionnaire) {
                     if ($sideEffect) {
                         $data['error'] = "";
-                        $data['sys'] = "";
+                        $data['sys'] = $commissionnaire;
                         return $data;
                     }
                     return response()->json([
                         'success' => true,
-                        'message' => 'Bailleur parrainé avec succès'
+                        'message' => 'Commissionnaire créée avec succès'
                     ], 201);
                 }
             }
@@ -132,14 +129,15 @@ class BailleurController extends Controller
                 'message' => $message
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Erreur de parrainnage  : ' . $e->getMessage());
+            Log::error('Erreur de commissionnaire  : ' . $e->getMessage());
         }
     }
+
 
     /**
      * Display the specified resource.
      */
-    public function show(Bailleur $bailleur)
+    public function show(Commissionnaire $commissionnaire)
     {
         //
     }
@@ -147,7 +145,7 @@ class BailleurController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Bailleur $bailleur)
+    public function edit(Commissionnaire $commissionnaire)
     {
         //
     }
@@ -155,7 +153,7 @@ class BailleurController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Bailleur $bailleur)
+    public function update(Request $request, Commissionnaire $commissionnaire)
     {
         //
     }
@@ -163,7 +161,7 @@ class BailleurController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Bailleur $bailleur)
+    public function destroy(Commissionnaire $commissionnaire)
     {
         //
     }

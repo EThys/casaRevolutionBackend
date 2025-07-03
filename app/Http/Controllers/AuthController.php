@@ -52,6 +52,7 @@ class AuthController extends Controller
                 'CityId' => $request->CityId,
                 'username' => $request->first_name . $request->last_name,
                 'postal_code' => $request->postal_code,
+                'profile_picture'=>$request->profile_picture,
                 'TypeAccountId' => $request->TypeAccountId,
                 'country' => $request->country,
                 'date_of_birth' => $request->date_of_birth ? Carbon::parse($request->date_of_birth) : null,
@@ -160,58 +161,71 @@ class AuthController extends Controller
     /**
      * Connexion de l'utilisateur
      */
-    public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required', // Suppression de la validation 'email'
-            'password' => 'required',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => implode(' ', $validator->errors()->all())
-            ], 422);
-        }
+     public function login(Request $request)
+     {
+         $validator = Validator::make($request->all(), [
+             'email' => 'required', // Peut être email ou téléphone
+             'password' => 'required',
+         ]);
 
-        // Détermination du type d'identifiant (email ou téléphone)
-        $identifier = $request->input('email');
-        $field = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+         if ($validator->fails()) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Erreur de validation',
+                 'errors' => implode(' ', $validator->errors()->all())
+             ], 422);
+         }
 
-        if (!Auth::attempt([$field => $identifier, 'password' => $request->password])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Identifiants de connexion invalides'
-            ], 401);
-        }
+         $identifier = $request->input('email');
+         $field = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
 
-        try {
-            $user = User::where($field, $identifier)->firstOrFail();
-            $token = $user->createToken('auth_token')->plainTextToken;
+         // Recherche de l'utilisateur par email ou téléphone
+         $user = User::where($field, $identifier)->first();
 
-            $user->update([
-                'last_login_at' => now(),
-                'last_login_ip' => $request->ip()
-            ]);
+         if (!$user) {
+             // Utilisateur non trouvé
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Aucun compte trouvé avec cet identifiant.'
+             ], 404);
+         }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Connexion réussie',
-                'data' => [
-                    'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'Bearer'
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Erreur de connexion : ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Échec de la connexion'
-            ], 500);
-        }
-    }
+         // Vérification du mot de passe
+         if (!Hash::check($request->password, $user->password)) {
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Mot de passe incorrect.'
+             ], 401);
+         }
+
+         try {
+             $token = $user->createToken('auth_token')->plainTextToken;
+
+             $user->update([
+                 'last_login_at' => now(),
+                 'last_login_ip' => $request->ip()
+             ]);
+
+             return response()->json([
+                 'success' => true,
+                 'message' => 'Connexion réussie',
+                 'data' => [
+                     'user' => $user,
+                     'token' => $token,
+                     'token_type' => 'Bearer'
+                 ]
+             ]);
+         } catch (\Exception $e) {
+             Log::error('Erreur de connexion : ' . $e->getMessage());
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Échec de la connexion'
+             ], 500);
+         }
+     }
+
+
 
 
     /**

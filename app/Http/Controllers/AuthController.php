@@ -20,114 +20,170 @@ class AuthController extends Controller
     /**
      * Enregistrement d'un nouvel utilisateur
      */
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email|max:255|unique:TUsers',
-            'password' => 'required',
-            'TypeAccountId' => 'required|integer|in:1,2,3,4',
-            'CityId' => 'int',
-            'postal_code' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'date_of_birth' => 'nullable|date|before_or_equal:today',
-            'gender' => 'nullable|in:male,female,other',
-            'profile_picture' => 'nullable|string', // Base64 string
-            'bio' => 'nullable|string|max:500',
-            'is_agent' => 'nullable|boolean',
-            'is_admin' => 'nullable|boolean',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => implode(' ', $validator->errors()->all())
-            ], 422);
-        }
+     public function register(Request $request)
+     {
+         $validator = Validator::make($request->all(), [
+             'email' => 'required|string|email|max:255|unique:TUsers,email',
+             'password' => 'required',
+             'TypeAccountId' => 'required|integer|in:1,2,3,4',
+             'CityId' => 'int',
+             'postal_code' => 'nullable|string|max:20',
+             'country' => 'nullable|string|max:100',
+             'date_of_birth' => 'nullable|date|before_or_equal:today',
+             'gender' => 'nullable|in:male,female,other',
+             'profile_picture' => 'nullable|string', // Base64 string
+             'bio' => 'nullable|string|max:500',
+             'is_agent' => 'nullable|boolean',
+             'is_admin' => 'nullable|boolean',
+         ]);
 
-        try {
-            $userData = [
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'CityId' => $request->CityId,
-                'username' => $request->first_name . $request->last_name,
-                'postal_code' => $request->postal_code,
-                'profile_picture'=>$request->profile_picture,
-                'TypeAccountId' => $request->TypeAccountId,
-                'country' => $request->country,
-                'date_of_birth' => $request->date_of_birth ? Carbon::parse($request->date_of_birth) : null,
-                'gender' => $request->gender,
-                'bio' => $request->bio,
-                'is_agent' => $request->is_agent ?? false,
-                'is_admin' => $request->is_admin ?? false,
-            ];
+         if ($validator->fails()) {
+             $errors = $validator->errors();
 
-            // Gestion de l'image de profil en base64
-            if ($request->profile_picture) {
-                $imageData = $this->processBase64Image($request->profile_picture);
-                if ($imageData) {
-                    $path = 'profile_pictures/' . uniqid() . '.' . $imageData['extension'];
-                    Storage::disk('public')->put($path, $imageData['data']);
-                    $userData['profile_picture'] = $path;
-                }
-            }
+             // Personnalisation des messages d'erreur
+             if ($errors->has('email')) {
+                 return response()->json([
+                     'success' => false,
+                     'message' => 'Cet email est déjà utilisé.',
+                     'errors' => $errors->get('email')
+                 ], 422);
+             }
 
-            $user = User::create($userData);
+             if ($errors->has('password')) {
+                 return response()->json([
+                     'success' => false,
+                     'message' => 'Le mot de passe est invalide. Il doit contenir au moins 8 caractères et être confirmé.',
+                     'errors' => $errors->get('password')
+                 ], 422);
+             }
 
-            $token = $user->createToken('auth_token')->plainTextToken;
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Erreur de validation',
+                 'errors' => $errors->all()
+             ], 422);
+         }
 
-            switch ($request->TypeAccountId) {
-                case 1: {
-                        $request->merge(['UserId' => $user->UserId]);
-                        $data = (new BailleurController())->store($request, true);
-                        if ($data['error'] !== null) {
-                            if ($data['error'] != "") {
-                                User::destroy($user->UserId);
-                                return response()->json([
-                                    "message" => $data['error']
-                                ], 422);
-                            }
-                        }
-                    }
-                case 2: {
-                        $request->merge(['UserId' => $user->UserId]);
-                        $data = (new LocataireController())->store($request, true);
-                        if ($data['error'] != "") {
-                            User::destroy($user->UserId);
-                            return response()->json([
-                                "message" => $data['error']
-                            ], 422);
-                        }
-                    }
-                case 3: {
-                        $request->merge(['UserId' => $user->UserId]);
-                        $data = (new CommissionnaireController())->store($request, true);
-                        if ($data['error'] != "") {
-                            User::destroy($user->UserId);
-                            return response()->json([
-                                "message" => $data['error']
-                            ], 422);
-                        }
-                    }
-            }
+         try {
+             $userData = [
+                 'email' => $request->email,
+                 'password' => Hash::make($request->password),
+                 'CityId' => $request->CityId,
+                 'username' => $request->first_name . $request->last_name,
+                 'postal_code' => $request->postal_code,
+                 'TypeAccountId' => $request->TypeAccountId,
+                 'country' => $request->country,
+                 'date_of_birth' => $request->date_of_birth ? Carbon::parse($request->date_of_birth) : null,
+                 'gender' => $request->gender,
+                 'bio' => $request->bio,
+                 'is_agent' => $request->is_agent ?? false,
+                 'is_admin' => $request->is_admin ?? false,
+             ];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Utilisateur enregistré avec succès',
-                'data' => [
-                    'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'Bearer'
-                ]
-            ], 201);
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'enregistrement : ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Échec de l\'enregistrement'
-            ], 500);
-        }
-    }
+             // Gestion de l'image de profil en base64 - Version améliorée inspirée du premier code
+             if ($request->profile_picture) {
+                 $imageData = base64_decode($request->profile_picture);
+
+                 if ($imageData === false) {
+                     return response()->json([
+                         'success' => false,
+                         'message' => 'Erreur lors du décodage de l\'image Base64.'
+                     ], 400);
+                 }
+
+                 // Déterminer le type MIME et l'extension
+                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                 $mime_type = finfo_buffer($finfo, $imageData);
+                 finfo_close($finfo);
+
+                 $extension = 'jpg'; // par défaut
+                 switch ($mime_type) {
+                     case 'image/jpeg':
+                         $extension = 'jpg';
+                         break;
+                     case 'image/png':
+                         $extension = 'png';
+                         break;
+                     case 'image/gif':
+                         $extension = 'gif';
+                         break;
+                     case 'image/webp':
+                         $extension = 'webp';
+                         break;
+                 }
+
+                 $fileName = time() . '_' . uniqid() . '.' . $extension;
+                 $path = 'profile_pictures/' . $fileName;
+
+                 if (!Storage::disk('public')->put($path, $imageData)) {
+                     return response()->json([
+                         'success' => false,
+                         'message' => 'Erreur lors de l\'enregistrement de l\'image.'
+                     ], 500);
+                 }
+
+                 $userData['profile_picture'] = $path;
+             }
+
+             $user = User::create($userData);
+             $token = $user->createToken('auth_token')->plainTextToken;
+
+             switch ($request->TypeAccountId) {
+                 case 1: {
+                     $request->merge(['UserId' => $user->UserId]);
+                     $data = (new BailleurController())->store($request, true);
+                     if ($data['error'] !== null && $data['error'] != "") {
+                         User::destroy($user->UserId);
+                         return response()->json([
+                             "message" => $data['error']
+                         ], 422);
+                     }
+                     break;
+                 }
+                 case 2: {
+                     $request->merge(['UserId' => $user->UserId]);
+                     $data = (new LocataireController())->store($request, true);
+                     if ($data['error'] != "") {
+                         User::destroy($user->UserId);
+                         return response()->json([
+                             "message" => $data['error']
+                         ], 422);
+                     }
+                     break;
+                 }
+                 case 3: {
+                     $request->merge(['UserId' => $user->UserId]);
+                     $data = (new CommissionnaireController())->store($request, true);
+                     if ($data['error'] != "") {
+                         User::destroy($user->UserId);
+                         return response()->json([
+                             "message" => $data['error']
+                         ], 422);
+                     }
+                     break;
+                 }
+             }
+
+             return response()->json([
+                 'success' => true,
+                 'message' => 'Utilisateur enregistré avec succès',
+                 'data' => [
+                     'user' => $user,
+                     'token' => $token,
+                     'token_type' => 'Bearer'
+                 ]
+             ], 201);
+         } catch (\Exception $e) {
+             Log::error('Erreur lors de l\'enregistrement : ' . $e->getMessage());
+             return response()->json([
+                 'success' => false,
+                 'message' => 'Échec de l\'enregistrement'
+             ], 500);
+         }
+     }
+
+
 
     /**
      * Traitement de l'image en base64

@@ -22,7 +22,7 @@ class PropertyImage extends Model
 
     public function property()
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(Property::class,'PropertyId');
     }
 
 }

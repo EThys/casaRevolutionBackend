@@ -50,7 +50,7 @@ class BailleurController extends Controller
     public function store(Request $request, bool $sideEffect = false)
     {
         $data['error'] = "";
-        $data['sys']   = "";
+        $data['sys'] = "";
         $validator = Validator::make(
             $request->all(),
             [
@@ -64,7 +64,6 @@ class BailleurController extends Controller
                 'images.*.isMain'   => 'boolean',
                 'ParrainId'         => 'int',
                 'UserId'            => 'int',
-                // 'ParrainId'         => 'required|exists:TUsers,UserId',
                 'number_card'       => 'string|unique:TBailleurs,number_card',
                 'note'              => 'string',
                 'TypeCardId'        => 'int',
@@ -77,7 +76,7 @@ class BailleurController extends Controller
             $errors = $validator->errors();
             if ($sideEffect) {
                 $data['error'] = implode(' ', $validator->errors()->all()) ?? "";
-                return;
+                return $data;
             }
             return response()->json([
                 'success' => false,
@@ -85,12 +84,14 @@ class BailleurController extends Controller
                 'errors' => implode(' ', $validator->errors()->all())
             ], 422);
         }
+
+        // Traitement de l'image
         if ($request->images) {
             $image = base64_decode($request->images['base64']);
             if ($image === false) {
                 if ($sideEffect) {
                     $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
+                    return $data;
                 }
                 return response()->json([
                     'success' => false,
@@ -100,39 +101,62 @@ class BailleurController extends Controller
             $imageName = 'bailleur_' . uniqid() . '.jpg';
             try {
                 Storage::disk('public')->put('bailleur/' . $imageName, $image);
-                $path = 'properties/' . $imageName;
+                $path = 'bailleur/' . $imageName;
             } catch (Exception $e) {
                 Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
             }
         }
 
         $request['fullname'] = "$request->first_name $request->last_name";
+
         try {
             $message = "Ce bailleur est déjà parrainé dans la plateforme";
+
+            // Vérifier si le bailleur existe déjà
             if (count(Bailleur::where("fullname", $request['fullname'])->get()) == 0) {
-                $bailleur = (Bailleur::create($request->except(['images'])))->update(['images' => $path]);
+                // Créer le bailleur
+                $bailleur = Bailleur::create($request->except(['images']));
+
+                // Mettre à jour l'image si elle existe
+                if ($path) {
+                    $bailleur->update(['images' => $path]);
+                }
+
                 if ($bailleur) {
                     if ($sideEffect) {
                         $data['error'] = "";
                         $data['sys'] = "";
+                        $data['bailleur'] = $bailleur; // Ajouter les données du bailleur
                         return $data;
                     }
                     return response()->json([
                         'success' => true,
-                        'message' => 'Bailleur parrainé avec succès'
+                        'message' => 'Bailleur parrainé avec succès',
+                        'data' => $bailleur // Retourner les données du bailleur
                     ], 201);
                 }
             }
+
             if ($sideEffect) {
                 $data['error'] = $message;
-                return $data['error'];
+                return $data;
             }
             return response()->json([
                 'success' => false,
                 'message' => $message
             ], 422);
+
         } catch (\Throwable $e) {
-            Log::error('Erreur de parrainnage  : ' . $e->getMessage());
+            Log::error('Erreur de parrainnage : ' . $e->getMessage());
+
+            if ($sideEffect) {
+                $data['error'] = 'Erreur lors du parrainage';
+                return $data;
+            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du parrainage'
+            ], 500);
         }
     }
 

@@ -79,6 +79,8 @@ class BailleurController extends Controller
         );
 
         $path = "";
+        $path_back_card = "";
+        $path_front_card = "";
         if ($validator->fails()) {
             $errors = $validator->errors();
             if ($sideEffect) {
@@ -106,17 +108,59 @@ class BailleurController extends Controller
             $imageName = 'bailleur_' . uniqid() . '.jpg';
             try {
                 Storage::disk('public')->put('bailleur/' . $imageName, $image);
-                $path = 'properties/' . $imageName;
+                $path = 'bailleur/' . $imageName;
             } catch (Exception $e) {
                 Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
             }
         }
 
+        if ($request->card_back) {
+            $image = base64_decode($request->card_back['base64']);
+            if ($image === false) {
+                if ($sideEffect) {
+                    $data['error'] = 'Données d\'image base64 invalides';
+                    return $data['error'];
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données d\'image base64 invalides'
+                ], 422);
+            }
+            $imageName = 'card_back_' . uniqid() . '.jpg';
+            try {
+                Storage::disk('public')->put('bailleur/card/' . $imageName, $image);
+                $path_back_card = 'bailleur/card/' . $imageName;
+            } catch (Exception $e) {
+                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
+            }
+        }
+
+
+        if ($request->card_front) {
+            $image = base64_decode($request->card_front['base64']);
+            if ($image === false) {
+                if ($sideEffect) {
+                    $data['error'] = 'Données d\'image base64 invalides';
+                    return $data['error'];
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données d\'image base64 invalides'
+                ], 422);
+            }
+            $imageName = 'card_front' . uniqid() . '.jpg';
+            try {
+                Storage::disk('public')->put('bailleur/card/' . $imageName, $image);
+                $path_front_card = 'bailleur/card/' . $imageName;
+            } catch (Exception $e) {
+                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
+            }
+        }
         $request['fullname'] = "$request->first_name $request->last_name";
         try {
             $message = "Ce bailleur est déjà parrainé dans la plateforme";
             if (count(Bailleur::where("fullname", $request['fullname'])->get()) == 0) {
-                $bailleur = (Bailleur::create($request->except(['images'])))->update(['images' => $path]);
+                $bailleur = (Bailleur::create($request->except(['images', 'card_front', 'card_back'])))->update(['images' => $path, 'card_front' => $path_front_card, 'card_back' => $path_back_card]);
                 if ($bailleur) {
                     if ($sideEffect) {
                         $data['error'] = "";

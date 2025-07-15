@@ -53,19 +53,25 @@ class LocataireController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
-                'first_name'        => 'required|string|max:255',
-                'last_name'         => 'required|string|max:255',
-                'phone'             => 'string|unique:TBailleurs,phone',
-                'email'             => 'string|unique:TBailleurs,email',
-                'address'           => 'string',
-                'images'            => 'nullable|array',
-                'images.*.base64'   => 'required_with:images|nullable|string',
-                'images.*.isMain'   => 'boolean',
-                'UserId'            => 'int',
-                'number_card'       => 'string|unique:TBailleurs,number_card',
-                'note'              => 'string',
-                'TypeCardId'        => 'int',
-                'fullname'          => 'nullable|string|unique:TBailleurs,fullname'
+                'first_name'            => 'required|string|max:255',
+                'last_name'             => 'required|string|max:255',
+                'phone'                 => 'string|unique:TBailleurs,phone',
+                'email'                 => 'string|unique:TBailleurs,email',
+                'address'               => 'string',
+                'images'                => 'nullable|array',
+                'images.*.base64'       => 'required_with:images|nullable|string',
+                'images.*.isMain'       => 'boolean',
+                'UserId'                => 'int',
+                'number_card'           => 'string|unique:TBailleurs,number_card',
+                'card_front'            => 'nullable|array',
+                'card_front.*.base64'   => 'required_with:images|nullable|string',
+                'card_front.*.isMain'   => 'boolean',
+                'card_back'             => 'nullable|array',
+                'card_back.*.base64'    => 'required_with:images|nullable|string',
+                'card_back.*.isMain'    => 'boolean',
+                'note'                  => 'string',
+                'TypeCardId'            => 'int',
+                'fullname'              => 'nullable|string|unique:TBailleurs,fullname'
             ]
         );
 

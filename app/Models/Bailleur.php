@@ -19,6 +19,8 @@ class Bailleur extends Model
         'email',
         'address',
         'images',
+        'card_front',
+        'card_back',
         'ParrainId',
         'UserId',
         'TypeCardId',

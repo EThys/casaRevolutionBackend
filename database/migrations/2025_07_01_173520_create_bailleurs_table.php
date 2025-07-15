@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('phone')->nullable()->unique();
             $table->string('email')->nullable()->unique();
             $table->string('number_card')->nullable()->unique();
+            $table->string('card_front')->nullable();
+            $table->string('card_back')->nullable();
             $table->string('address')->nullable();
             $table->string('images')->nullable();
             $table->string('note')->nullable();

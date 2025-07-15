@@ -53,23 +53,31 @@ class LocataireController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
-                'first_name'        => 'required|string|max:255',
-                'last_name'         => 'required|string|max:255',
-                'phone'             => 'string|unique:TBailleurs,phone',
-                'email'             => 'string|unique:TBailleurs,email',
-                'address'           => 'string',
-                'images'            => 'nullable|array',
-                'images.*.base64'   => 'required_with:images|nullable|string',
-                'images.*.isMain'   => 'boolean',
-                'UserId'            => 'int',
-                'number_card'       => 'string|unique:TBailleurs,number_card',
-                'note'              => 'string',
-                'TypeCardId'        => 'int',
-                'fullname'          => 'nullable|string|unique:TBailleurs,fullname'
+                'first_name'            => 'required|string|max:255',
+                'last_name'             => 'required|string|max:255',
+                'phone'                 => 'string|unique:TBailleurs,phone',
+                'email'                 => 'string|unique:TBailleurs,email',
+                'address'               => 'string',
+                'images'                => 'nullable|array',
+                'images.*.base64'       => 'required_with:images|nullable|string',
+                'images.*.isMain'       => 'boolean',
+                'UserId'                => 'int',
+                'number_card'           => 'string|unique:TBailleurs,number_card',
+                'card_front'            => 'nullable|array',
+                'card_front.*.base64'   => 'required_with:images|nullable|string',
+                'card_front.*.isMain'   => 'boolean',
+                'card_back'             => 'nullable|array',
+                'card_back.*.base64'    => 'required_with:images|nullable|string',
+                'card_back.*.isMain'    => 'boolean',
+                'note'                  => 'string',
+                'TypeCardId'            => 'int',
+                'fullname'              => 'nullable|string|unique:TBailleurs,fullname'
             ]
         );
 
         $path = "";
+        $path_back_card = "";
+        $path_front_card = "";
         if ($validator->fails()) {
             $errors = $validator->errors();
             if ($sideEffect) {
@@ -102,12 +110,53 @@ class LocataireController extends Controller
                 Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
             }
         }
+        if ($request->card_back) {
+            $image = base64_decode($request->card_back['base64']);
+            if ($image === false) {
+                if ($sideEffect) {
+                    $data['error'] = 'Données d\'image base64 invalides';
+                    return $data['error'];
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données d\'image base64 invalides'
+                ], 422);
+            }
+            $imageName = 'card_back_' . uniqid() . '.jpg';
+            try {
+                Storage::disk('public')->put('locataire/card/' . $imageName, $image);
+                $path_back_card = 'locataire/card/' . $imageName;
+            } catch (Exception $e) {
+                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
+            }
+        }
 
+
+        if ($request->card_front) {
+            $image = base64_decode($request->card_front['base64']);
+            if ($image === false) {
+                if ($sideEffect) {
+                    $data['error'] = 'Données d\'image base64 invalides';
+                    return $data['error'];
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données d\'image base64 invalides'
+                ], 422);
+            }
+            $imageName = 'card_front' . uniqid() . '.jpg';
+            try {
+                Storage::disk('public')->put('locataire/card/' . $imageName, $image);
+                $path_front_card = 'locataire/card/' . $imageName;
+            } catch (Exception $e) {
+                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
+            }
+        }
         $request['fullname'] = "$request->first_name $request->last_name";
         try {
             $message = "Ce Locataire existe dans la plateforme";
             if (count(Locataire::where("fullname", $request['fullname'])->get()) == 0) {
-                $locataire = (Locataire::create($request->except(['images'])))->update(['images' => $path]);
+                $locataire = (Locataire::create(['images', 'card_front', 'card_back']))->update(['images' => $path, 'card_front' => $path_front_card, 'card_back' => $path_back_card]);
                 if ($locataire) {
                     if ($sideEffect) {
                         $data['error'] = "";

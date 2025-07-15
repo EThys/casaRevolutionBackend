@@ -23,6 +23,8 @@ class Commissionnaire extends Model
         'UserId',
         'TypeCardId',
         'number_card',
+        'card_front',
+        'card_back'
     ];
 
     public function user(): BelongsTo

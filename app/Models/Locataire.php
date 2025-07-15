@@ -20,6 +20,8 @@ class Locataire extends Model
         'address',
         'images',
         'UserId',
+        'card_front',
+        'card_back',
         'TypeCardId',
         'number_card',
     ];

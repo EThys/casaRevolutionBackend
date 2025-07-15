@@ -6,7 +6,6 @@ use App\Models\Property;
 use App\Models\PropertyType;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;

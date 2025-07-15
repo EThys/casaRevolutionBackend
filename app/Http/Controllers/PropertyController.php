@@ -49,7 +49,7 @@ class PropertyController extends Controller
                 'city' => 'required|string',
                 'postalCode' => 'required|string',
                 'sold' => 'boolean',
-                'transactionType' => 'required|in:avendre,location',
+                'transactionType' => 'required|in:vente,location',
                 'PropertyTypeId' => 'required|exists:TPropertyTypes,PropertyTypeId',
                 'UserId' => 'required|exists:TUsers,UserId',
                 'latitude' => 'nullable|numeric|between:-90,90',

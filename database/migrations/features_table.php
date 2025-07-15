@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('TPropertyFeatures', function (Blueprint $table) {
-            $table->id('PropertyFeatureId');
+            $table->bigIncrements('PropertyFeatureId');
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('icon')->nullable();

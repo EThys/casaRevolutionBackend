@@ -68,9 +68,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('properties/{id}', [PropertyController::class, 'destroy']);
 
     //ROUTES POUR LES RESERVATIONS
+    Route::get('visits/user/{userId}', [PropertyVisitController::class, 'getVisitsByUser']);
     Route::get('visits/status/{status}', [PropertyVisitController::class, 'getByStatus']);
-    Route::put('visits/{id}/status', [PropertyVisitController::class, 'changeStatus']);
+    Route::post('visits/{id}/status', [PropertyVisitController::class, 'changeStatus']);
     Route::post('visit', [PropertyVisitController::class, 'store']);
+    Route::get('visit/all', [PropertyVisitController::class, 'index']);
 
     //ROUTES POUR LES PROPERTYTYPE
 

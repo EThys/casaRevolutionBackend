@@ -42,10 +42,59 @@ class PropertyVisitController extends Controller
         }
     }
 
+        /**
+     * Récupère toutes les visites pour un utilisateur spécifique
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getVisitsByUser(Request $request, $userId)
+    {
+        try {
+            // if (!is_numeric($userId)) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'L\'ID utilisateur doit être un nombre'
+            //     ], 400);
+            // }
+
+            $perPage = $request->input('per_page', 10);
+
+            $visits = PropertyVisit::with(['property', 'user'])
+                ->where('UserId', $userId)
+                ->orderBy('visitDate', 'desc')
+                ->orderBy('visitHour', 'desc')
+                ->paginate($perPage);
+
+
+            if ($visits->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Aucune visite trouvée pour cet utilisateur',
+                    'data' => []
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Liste des visites de l\'utilisateur récupérée avec succès',
+                'data' => $visits
+            ]);
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la récupération des visites utilisateur : ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Échec de la récupération des visites de l\'utilisateur'
+            ], 500);
+        }
+    }
+
+
     /**
      * Crée une nouvelle visite
      */
-    public function store(Request $request){
+    public function store(Request $request) {
         try {
             $validator = Validator::make($request->all(), [
                 'PropertyId' => 'required|exists:TProperties,PropertyId',
@@ -77,23 +126,49 @@ class PropertyVisitController extends Controller
                 ], 400);
             }
 
-            // Vérification de la réservation existante
-            $existingVisit = PropertyVisit::where('PropertyId', $request->PropertyId)
+            $visitDate = $request->visitDate;
+            $visitHour = $request->visitHour;
+            $visitDateTime = Carbon::createFromFormat('Y-m-d H:i', "$visitDate $visitHour");
+
+            // Définir la plage ±25 minutes autour de visitDateTime
+            $startWindow = $visitDateTime->copy()->subMinutes(25);
+            $endWindow = $visitDateTime->copy()->addMinutes(25);
+
+            // Vérification 1: Réservation existante dans la plage horaire
+            $existingVisits = PropertyVisit::where('PropertyId', $request->PropertyId)
+                ->where('visitDate', $visitDate)
+                ->get()
+                ->filter(function ($visit) use ($startWindow, $endWindow) {
+                    $visitDateTime = Carbon::createFromFormat('Y-m-d H:i', "{$visit->visitDate} {$visit->visitHour}");
+                    return $visitDateTime->between($startWindow, $endWindow);
+                });
+
+            // Vérification 2: Même personne avec visite en pending pour la même propriété
+            $userPendingVisits = PropertyVisit::where('PropertyId', $request->PropertyId)
                 ->where(function($query) use ($request) {
                     $query->where('email', $request->email)
-                        ->orWhere('phone', $request->phone);
+                          ->orWhere('phone', $request->phone);
 
                     if ($request->UserId) {
                         $query->orWhere('UserId', $request->UserId);
                     }
                 })
-                ->first();
+                ->where('status', 'pending')
+                ->exists();
 
-            if ($existingVisit) {
+            if ($userPendingVisits) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Vous avez déjà une visite planifiée pour cette propriété'
-                ], 409); // 409 Conflict
+                    'message' => 'Vous avez déjà une visite en attente pour cette propriété'
+                ], 409);
+            }
+
+            // Vérification 3: Conflit horaire avec d'autres visiteurs
+            if ($existingVisits->isNotEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La plage horaire demandée est déjà réservée pour cette propriété'
+                ], 409);
             }
 
             $visit = PropertyVisit::create($request->all());
@@ -117,6 +192,7 @@ class PropertyVisitController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Affiche une visite spécifique
@@ -289,7 +365,7 @@ class PropertyVisitController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Statut de la visite mis à jour avec succès",
-                'data' => $visit->load(['property', 'user'])
+                'data' =>   $visit->load(['property.images', 'user'])
             ]);
 
         } catch (ModelNotFoundException $e) {

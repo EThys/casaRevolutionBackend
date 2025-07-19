@@ -79,7 +79,7 @@ class PropertyVisitController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Liste des visites de l\'utilisateur récupérée avec succès',
-                'data' => $visits
+                'data' => $visits->load(['property.images', 'user'])
             ]);
         } catch (Exception $e) {
             Log::error('Erreur lors de la récupération des visites utilisateur : ' . $e->getMessage());
@@ -145,14 +145,7 @@ class PropertyVisitController extends Controller
 
             // Vérification 2: Même personne avec visite en pending pour la même propriété
             $userPendingVisits = PropertyVisit::where('PropertyId', $request->PropertyId)
-                ->where(function($query) use ($request) {
-                    $query->where('email', $request->email)
-                          ->orWhere('phone', $request->phone);
-
-                    if ($request->UserId) {
-                        $query->orWhere('UserId', $request->UserId);
-                    }
-                })
+                ->where('UserId', $request->UserId)
                 ->where('status', 'pending')
                 ->exists();
 
@@ -366,6 +359,7 @@ class PropertyVisitController extends Controller
                 'success' => true,
                 'message' => "Statut de la visite mis à jour avec succès",
                 'data' =>   $visit->load(['property.images', 'user'])
+
             ]);
 
         } catch (ModelNotFoundException $e) {

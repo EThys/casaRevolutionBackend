@@ -51,139 +51,121 @@ class BailleurController extends Controller
     {
         $data['error'] = "";
         $data['sys'] = "";
+
         $validator = Validator::make(
             $request->all(),
             [
-                'first_name'            => 'required|string|max:255',
-                'last_name'             => 'required|string|max:255',
-                'phone'                 => 'string|unique:TBailleurs,phone',
-                'email'                 => 'string|unique:TBailleurs,email',
-                'address'               => 'string',
-                'images'                => 'nullable|array',
-                'images.*.base64'       => 'required_with:images|nullable|string',
-                'images.*.isMain'       => 'boolean',
-                'card_front'            => 'nullable|array',
-                'card_front.*.base64'   => 'required_with:images|nullable|string',
-                'card_front.*.isMain'   => 'boolean',
-                'card_back'             => 'nullable|array',
-                'card_back.*.base64'    => 'required_with:images|nullable|string',
-                'card_back.*.isMain'    => 'boolean',
-                'ParrainId'             => 'int',
-                'UserId'                => 'int',
-                'number_card'           => 'string|unique:TBailleurs,number_card',
-                'note'                  => 'string',
-                'TypeCardId'            => 'int',
-                'fullname'              => 'nullable|string|unique:TBailleurs,fullname'
+                'first_name'   => 'required|string|max:255',
+                'last_name'    => 'required|string|max:255',
+                'phone'        => 'string|unique:TBailleurs,phone',
+                'email'        => 'string|unique:TBailleurs,email',
+                'address'      => 'string',
+                'images'       => 'nullable|string',
+                'card_front'   => 'nullable|string',
+                'card_back'    => 'nullable|string',
+                'ParrainId'    => 'int',
+                'UserId'       => 'int',
+                'number_card'  => 'string|unique:TBailleurs,number_card',
+                'note'         => 'string',
+                'TypeCardId'   => 'int',
+                'fullname'     => 'nullable|string|unique:TBailleurs,fullname'
             ]
         );
 
-        $path = "";
-        $path_back_card = "";
-        $path_front_card = "";
         if ($validator->fails()) {
             $errors = $validator->errors();
             if ($sideEffect) {
-                $data['error'] = implode(' ', $validator->errors()->all()) ?? "";
+                $data['error'] = implode(' ', $errors->all());
                 return $data;
             }
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => implode(' ', $validator->errors()->all())
+                'errors'  => implode(' ', $errors->all())
             ], 422);
         }
 
-        // Traitement de l'image
-        if ($request->images) {
-            $image = base64_decode($request->images['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data;
-                }
+        $path_image = "";
+        $path_back_card = "";
+        $path_front_card = "";
+
+        if ($request->filled('images')) {
+            $decoded = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->images));
+            if ($decoded === false) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
+                    'message' => 'L\'image principale est invalide'
                 ], 422);
             }
+
             $imageName = 'bailleur_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('bailleur/' . $imageName, $image);
-                $path = 'bailleur/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            Storage::disk('public')->put('bailleur/' . $imageName, $decoded);
+            $path_image = 'bailleur/' . $imageName;
         }
 
-        if ($request->card_back) {
-            $image = base64_decode($request->card_back['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
+        // Carte frontale (unique)
+        if ($request->filled('card_front')) {
+            $decoded = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_front));
+            if ($decoded === false) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
+                    'message' => 'L\'image de la carte frontale est invalide'
                 ], 422);
             }
+
+            $imageName = 'card_front_' . uniqid() . '.jpg';
+            Storage::disk('public')->put('bailleur/card/' . $imageName, $decoded);
+            $path_front_card = 'bailleur/card/' . $imageName;
+        }
+
+        // Carte arrière (unique)
+        if ($request->filled('card_back')) {
+            $decoded = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_back));
+            if ($decoded === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'L\'image de la carte arrière est invalide'
+                ], 422);
+            }
+
             $imageName = 'card_back_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('bailleur/card/' . $imageName, $image);
-                $path_back_card = 'bailleur/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            Storage::disk('public')->put('bailleur/card/' . $imageName, $decoded);
+            $path_back_card = 'bailleur/card/' . $imageName;
         }
 
 
-        if ($request->card_front) {
-            $image = base64_decode($request->card_front['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
-                ], 422);
-            }
-            $imageName = 'card_front' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('bailleur/card/' . $imageName, $image);
-                $path_front_card = 'bailleur/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
-        }
         $request['fullname'] = "$request->first_name $request->last_name";
 
         try {
             $message = "Ce bailleur est déjà parrainé dans la plateforme";
 
-            // Vérifier si le bailleur existe déjà
-            if (count(Bailleur::where("fullname", $request['fullname'])->get()) == 0) {
-                $bailleur = (Bailleur::create($request->except(['images', 'card_front', 'card_back'])))->update(['images' => $path, 'card_front' => $path_front_card, 'card_back' => $path_back_card]);
-                if ($bailleur) {
-                    if ($sideEffect) {
-                        $data['error'] = "";
-                        $data['sys'] = "";
-                        $data['bailleur'] = $bailleur; // Ajouter les données du bailleur
-                        return $data;
-                    }
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Bailleur parrainé avec succès',
-                        'data' => $bailleur // Retourner les données du bailleur
-                    ], 201);
+            if (Bailleur::where("fullname", $request['fullname'])->count() == 0) {
+                $bailleur = Bailleur::create($request->except(['images', 'card_front', 'card_back']));
+                $bailleur->update([
+                    'images'     => $path_image,
+                    'card_front' => $path_front_card,
+                    'card_back'  => $path_back_card
+                ]);
+
+                if ($sideEffect) {
+                    $data['error'] = "";
+                    $data['sys'] = "";
+                    $data['bailleur'] = $bailleur;
+                    return $data;
                 }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Bailleur parrainé avec succès',
+                    'data'    => $bailleur
+                ], 201);
             }
 
             if ($sideEffect) {
                 $data['error'] = $message;
                 return $data;
             }
+
             return response()->json([
                 'success' => false,
                 'message' => $message
@@ -196,12 +178,15 @@ class BailleurController extends Controller
                 $data['error'] = 'Erreur lors du parrainage';
                 return $data;
             }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du parrainage'
             ], 500);
         }
     }
+
+
 
     /**
      * Display the specified resource.

@@ -46,141 +46,143 @@ class CommissionnaireController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, bool $sideEffect = false)
-    {
+
+    public function store(Request $request, bool $sideEffect = false){
+
         $data['error'] = null;
         $data['sys']   = "";
+
         $validator = Validator::make(
             $request->all(),
             [
-                'first_name'            => 'required|string|max:255',
-                'last_name'             => 'required|string|max:255',
-                'phone'                 => 'string|unique:TBailleurs,phone',
-                'email'                 => 'string|unique:TBailleurs,email',
-                'address'               => 'string',
-                'images'                => 'nullable|array',
-                'images.*.base64'       => 'required_with:images|nullable|string',
-                'images.*.isMain'       => 'boolean',
-                'card_front'            => 'nullable|array',
-                'card_front.*.base64'   => 'required_with:images|nullable|string',
-                'card_front.*.isMain'   => 'boolean',
-                'card_back'             => 'nullable|array',
-                'card_back.*.base64'    => 'required_with:images|nullable|string',
-                'card_back.*.isMain'    => 'boolean',
-                'UserId'                => 'int',
-                'number_card'           => 'string|unique:TBailleurs,number_card',
-                'note'                  => 'string',
-                'TypeCardId'            => 'int',
-                'fullname'              => 'nullable|string|unique:TBailleurs,fullname'
+                'first_name'    => 'required|string|max:255',
+                'last_name'     => 'required|string|max:255',
+                'phone'         => 'string|unique:TBailleurs,phone',
+                'email'         => 'string|unique:TBailleurs,email',
+                'address'       => 'string',
+                'images'        => 'nullable|string',
+                'card_front'    => 'nullable|string',
+                'card_back'     => 'nullable|string',
+                'UserId'        => 'int',
+                'number_card'   => 'string|unique:TBailleurs,number_card',
+                'note'          => 'string',
+                'TypeCardId'    => 'int',
+                'fullname'      => 'nullable|string|unique:TBailleurs,fullname'
             ]
         );
 
-        $path = "";
-        $path_back_card = "";
-        $path_front_card = "";
         if ($validator->fails()) {
             $errors = $validator->errors();
+            $msg = implode(' ', $errors->all()) ?? "";
             if ($sideEffect) {
-                $data['error'] = implode(' ', $errors->all()) ?? "";
+                $data['error'] = $msg;
                 return $data;
             }
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => implode(' ', $validator->errors()->all())
+                'errors' => $msg
             ], 422);
         }
-        if ($request->images) {
-            $image = base64_decode($request->images['base64']);
+
+        $path_image = "";
+        $path_card_front = "";
+        $path_card_back = "";
+
+        // Image principale
+        if ($request->filled('images')) {
+            $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->images));
             if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
                 return response()->json([
                     'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
+                    'message' => 'Image principale invalide (base64)'
                 ], 422);
             }
-            $imageName = 'bailleur_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('Commissionnaire/' . $imageName, $image);
-                $path = 'properties/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            $imageName = 'commissionnaire_' . uniqid() . '.jpg';
+            Storage::disk('public')->put("commissionnaire/{$imageName}", $image);
+            $path_image = "commissionnaire/{$imageName}";
         }
-        if ($request->card_back) {
-            $image = base64_decode($request->card_back['base64']);
+
+        // Carte recto
+        if ($request->filled('card_front')) {
+            $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_front));
             if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
                 return response()->json([
                     'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
+                    'message' => 'Image carte frontale invalide (base64)'
+                ], 422);
+            }
+            $imageName = 'card_front_' . uniqid() . '.jpg';
+            Storage::disk('public')->put("commissionnaire/card/{$imageName}", $image);
+            $path_card_front = "commissionnaire/card/{$imageName}";
+        }
+
+        // Carte verso
+        if ($request->filled('card_back')) {
+            $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_back));
+            if ($image === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Image carte arrière invalide (base64)'
                 ], 422);
             }
             $imageName = 'card_back_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('commissionnaire/card/' . $imageName, $image);
-                $path_back_card = 'commissionnaire/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            Storage::disk('public')->put("commissionnaire/card/{$imageName}", $image);
+            $path_card_back = "commissionnaire/card/{$imageName}";
         }
 
+        // Création du fullname
+        $request['fullname'] = $request->first_name . ' ' . $request->last_name;
 
-        if ($request->card_front) {
-            $image = base64_decode($request->card_front['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
-                ], 422);
-            }
-            $imageName = 'card_front' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('commissionnaire/card/' . $imageName, $image);
-                $path_front_card = 'commissionnaire/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
-        }
-        $request['fullname'] = "$request->first_name $request->last_name";
         try {
-            $message = "Ce Commissionnaire est déjà dans la plateforme";
-            if (count(Commissionnaire::where("fullname", $request['fullname'])->get()) == 0) {
-                $commissionnaire = (Commissionnaire::create(['images', 'card_front', 'card_back']))->update(['images' => $path, 'card_front' => $path_front_card, 'card_back' => $path_back_card]);
-                if ($commissionnaire) {
-                    if ($sideEffect) {
-                        $data['error'] = "";
-                        $data['sys'] = $commissionnaire;
-                        return $data;
-                    }
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Commissionnaire créée avec succès'
-                    ], 201);
+            $message = "Ce commissionnaire est déjà enregistré.";
+
+            if (Commissionnaire::where("fullname", $request['fullname'])->count() == 0) {
+                $commissionnaire = Commissionnaire::create($request->except(['images', 'card_front', 'card_back']));
+                $commissionnaire->update([
+                    'images'     => $path_image,
+                    'card_front' => $path_card_front,
+                    'card_back'  => $path_card_back
+                ]);
+
+                if ($sideEffect) {
+                    $data['error'] = "";
+                    $data['sys'] = $commissionnaire;
+                    return $data;
                 }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commissionnaire enregistré avec succès',
+                    'data'    => $commissionnaire
+                ], 201);
             }
+
             if ($sideEffect) {
                 $data['error'] = $message;
-                return $data['error'];
+                return $data;
             }
+
             return response()->json([
                 'success' => false,
                 'message' => $message
             ], 422);
+
         } catch (\Throwable $e) {
-            Log::error('Erreur de commissionnaire  : ' . $e->getMessage());
+            Log::error('Erreur d\'enregistrement : ' . $e->getMessage());
+
+            if ($sideEffect) {
+                $data['error'] = 'Erreur d\'enregistrement';
+                return $data;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur interne du serveur'
+            ], 500);
         }
     }
+
 
 
     /**

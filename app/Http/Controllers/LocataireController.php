@@ -46,141 +46,127 @@ class LocataireController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, bool $sideEffect = false)
-    {
-        $data['error'] = null;
-        $data['sys']   = "";
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'first_name'            => 'required|string|max:255',
-                'last_name'             => 'required|string|max:255',
-                'phone'                 => 'string|unique:TBailleurs,phone',
-                'email'                 => 'string|unique:TBailleurs,email',
-                'address'               => 'string',
-                'images'                => 'nullable|array',
-                'images.*.base64'       => 'required_with:images|nullable|string',
-                'images.*.isMain'       => 'boolean',
-                'UserId'                => 'int',
-                'number_card'           => 'string|unique:TBailleurs,number_card',
-                'card_front'            => 'nullable|array',
-                'card_front.*.base64'   => 'required_with:images|nullable|string',
-                'card_front.*.isMain'   => 'boolean',
-                'card_back'             => 'nullable|array',
-                'card_back.*.base64'    => 'required_with:images|nullable|string',
-                'card_back.*.isMain'    => 'boolean',
-                'note'                  => 'string',
-                'TypeCardId'            => 'int',
-                'fullname'              => 'nullable|string|unique:TBailleurs,fullname'
-            ]
-        );
+    public function store(Request $request, bool $sideEffect = false){
 
-        $path = "";
-        $path_back_card = "";
-        $path_front_card = "";
+        $data['error'] = null;
+        $data['sys'] = "";
+
+        $validator = Validator::make($request->all(), [
+            'first_name'    => 'required|string|max:255',
+            'last_name'     => 'required|string|max:255',
+            'phone'         => 'string|unique:TLocataires,phone',
+            'email'         => 'string|unique:TLocataires,email',
+            'address'       => 'string',
+            'images'        => 'nullable|string', // base64 unique
+            'card_front'    => 'nullable|string', // base64 unique
+            'card_back'     => 'nullable|string', // base64 unique
+            'UserId'        => 'int',
+            'number_card'   => 'unique:TLocataires,number_card',
+            'note'          => 'string',
+            'TypeCardId'    => 'int',
+            'fullname'      => 'nullable|string|unique:TLocataires,fullname'
+        ]);
+
         if ($validator->fails()) {
-            $errors = $validator->errors();
+            $msg = implode(' ', $validator->errors()->all());
             if ($sideEffect) {
-                $data['error'] = implode(' ', $validator->errors()->all()) ?? "";
-                return;
+                $data['error'] = $msg;
+                return $data;
             }
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation',
-                'errors' => implode(' ', $validator->errors()->all())
+                'errors'  => $msg
             ], 422);
         }
-        if ($request->images) {
-            $image = base64_decode($request->images['base64']);
+
+        $path_image = null;
+        $path_card_front = null;
+        $path_card_back = null;
+
+        // Image principale
+        if ($request->filled('images')) {
+            $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->images));
             if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
-                ], 422);
+                return response()->json(['success' => false, 'message' => 'Image principale invalide'], 422);
             }
             $imageName = 'locataire_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('locataire/' . $imageName, $image);
-                $path = 'properties/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
-        }
-        if ($request->card_back) {
-            $image = base64_decode($request->card_back['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
-                ], 422);
-            }
-            $imageName = 'card_back_' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('locataire/card/' . $imageName, $image);
-                $path_back_card = 'locataire/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            Storage::disk('public')->put("locataire/{$imageName}", $image);
+            $path_image = "locataire/{$imageName}";
         }
 
-
-        if ($request->card_front) {
-            $image = base64_decode($request->card_front['base64']);
-            if ($image === false) {
-                if ($sideEffect) {
-                    $data['error'] = 'Données d\'image base64 invalides';
-                    return $data['error'];
-                }
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données d\'image base64 invalides'
-                ], 422);
+        // Carte frontale
+        if ($request->filled('card_front')) {
+            $front = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_front));
+            if ($front === false) {
+                return response()->json(['success' => false, 'message' => 'Image carte frontale invalide'], 422);
             }
-            $imageName = 'card_front' . uniqid() . '.jpg';
-            try {
-                Storage::disk('public')->put('locataire/card/' . $imageName, $image);
-                $path_front_card = 'locataire/card/' . $imageName;
-            } catch (Exception $e) {
-                Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
-            }
+            $frontName = 'card_front_' . uniqid() . '.jpg';
+            Storage::disk('public')->put("locataire/card/{$frontName}", $front);
+            $path_card_front = "locataire/card/{$frontName}";
         }
-        $request['fullname'] = "$request->first_name $request->last_name";
+
+        // Carte arrière
+        if ($request->filled('card_back')) {
+            $back = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->card_back));
+            if ($back === false) {
+                return response()->json(['success' => false, 'message' => 'Image carte arrière invalide'], 422);
+            }
+            $backName = 'card_back_' . uniqid() . '.jpg';
+            Storage::disk('public')->put("locataire/card/{$backName}", $back);
+            $path_card_back = "locataire/card/{$backName}";
+        }
+
+        // Générer le fullname
+        $request['fullname'] = $request->first_name . ' ' . $request->last_name;
+
         try {
-            $message = "Ce Locataire existe dans la plateforme";
-            if (count(Locataire::where("fullname", $request['fullname'])->get()) == 0) {
-                $locataire = (Locataire::create(['images', 'card_front', 'card_back']))->update(['images' => $path, 'card_front' => $path_front_card, 'card_back' => $path_back_card]);
-                if ($locataire) {
-                    if ($sideEffect) {
-                        $data['error'] = "";
-                        $data['sys'] = Locataire::where("fullname", $request['fullname'])->get();
-                        return $data;
-                    }
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Locataire créée avec succès'
-                    ], 201);
+            $message = "Ce locataire existe déjà dans la plateforme";
+
+            if (Locataire::where("fullname", $request['fullname'])->count() == 0) {
+                $locataire = Locataire::create($request->except(['images', 'card_front', 'card_back']));
+                $locataire->update([
+                    'images'     => $path_image,
+                    'card_front' => $path_card_front,
+                    'card_back'  => $path_card_back
+                ]);
+
+                if ($sideEffect) {
+                    $data['sys'] = $locataire;
+                    return $data;
                 }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Locataire créé avec succès',
+                    'data'    => $locataire
+                ], 201);
             }
+
             if ($sideEffect) {
                 $data['error'] = $message;
-                return $data['error'];
+                return $data;
             }
+
             return response()->json([
                 'success' => false,
                 'message' => $message
             ], 422);
+
         } catch (\Throwable $e) {
-            Log::error('Erreur de Locataire  : ' . $e->getMessage());
+            Log::error('Erreur Locataire : ' . $e->getMessage());
+            if ($sideEffect) {
+                $data['error'] = 'Erreur interne lors de l\'enregistrement';
+                return $data;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur interne'
+            ], 500);
         }
     }
+
 
     /**
      * Display the specified resource.

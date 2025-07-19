@@ -1,14 +1,15 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Http\Request;
+use Exception;
 use App\Models\Property;
 use App\Models\PropertyType;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 
 
@@ -60,7 +61,7 @@ class PropertyTypeController extends Controller
                 'data' => $e->errors()
             ], 422);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Échec de la création du type de propriété',

@@ -34,7 +34,7 @@ class PropertyController extends Controller
         }
     }
 
-    public function store(Request $request)
+        public function store(Request $request)
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -63,53 +63,73 @@ class PropertyController extends Controller
             ]);
 
             if ($validator->fails()) {
-                $errors = $validator->errors();
-
-                // $customErrors = [];
-                // foreach ($errors->messages() as $field => $messages) {
-                //     $customErrors[$field] = $messages[0];
-                // }
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Erreur de validation',
-                    'errors' => $errors
+                    'errors' => $validator->errors()
                 ], 422);
             }
 
+            // Création de la propriété
             $property = Property::create($request->except(['features', 'images']));
 
             if (!$property) {
                 throw new Exception('Échec de la création de la propriété');
             }
 
+            // Association des fonctionnalités
             if ($request->has('features')) {
                 $property->features()->attach($request->features);
             }
 
+            // Traitement des images
             if ($request->has('images')) {
                 foreach ($request->images as $imageData) {
-                    $image = base64_decode($imageData['base64']);
+                    if (!isset($imageData['base64'])) {
+                        continue;
+                    }
 
-                    if ($image === false) {
+                    $decodedImage = base64_decode($imageData['base64']);
+                    if ($decodedImage === false) {
                         return response()->json([
                             'success' => false,
-                            'message' => 'Données d\'image base64 invalides'
+                            'message' => 'Erreur lors du décodage de l\'image base64.'
                         ], 422);
                     }
 
-                    $imageName = 'property_' . $property->PropertyId . '_' . uniqid() . '.jpg';
+                    // Déterminer le type MIME
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mimeType = finfo_buffer($finfo, $decodedImage);
+                    finfo_close($finfo);
+
+                    $extension = match ($mimeType) {
+                        'image/jpeg' => 'jpg',
+                        'image/png' => 'png',
+                        'image/gif' => 'gif',
+                        'image/webp' => 'webp',
+                        default => null,
+                    };
+
+                    if (!$extension) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Format d\'image non supporté : ' . $mimeType
+                        ], 422);
+                    }
+
+                    $imageName = 'property_' . $property->PropertyId . '_' . uniqid() . '.' . $extension;
+                    $storagePath = 'properties/' . $imageName;
 
                     try {
-                        Storage::disk('public')->put('properties/' . $imageName, $image);
+                        Storage::disk('public')->put($storagePath, $decodedImage);
                     } catch (Exception $e) {
-                        Log::error('Erreur de stockage d\'image : ' . $e->getMessage());
+                        Log::error("Erreur de stockage d'image : " . $e->getMessage());
                         continue;
                     }
 
                     PropertyImage::create([
                         'PropertyId' => $property->PropertyId,
-                        'path' => 'properties/' . $imageName,
+                        'path' => $storagePath,
                         'isMain' => $imageData['isMain'] ?? false
                     ]);
                 }
@@ -131,6 +151,7 @@ class PropertyController extends Controller
             ], 500);
         }
     }
+
 
     public function show($id)
     {

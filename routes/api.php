@@ -14,7 +14,7 @@ use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\LocataireController;
 use App\Http\Controllers\PropertyTypeController;
 use App\Http\Controllers\TypeCardController;
-
+use App\Http\Controllers\PropertyFavoriteController;
 //ROUTES POUR L'AUTHENTIFICATION
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
@@ -79,4 +79,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('propertyType', [PropertyTypeController::class, 'store']);
     Route::put('propertyType/{propertyType}', [PropertyTypeController::class, 'update']);
     Route::delete('propertyType/{propertyType}', [PropertyTypeController::class, 'destroy']);
+
+
+    //ROUTES POUR LES FAVORIES
+    Route::apiResource('property-favorites', PropertyFavoriteController::class);
+    Route::get('users/{user}/favorites', [PropertyFavoriteController::class, 'getById']);
+    Route::delete('property-favorites/remove', [PropertyFavoriteController::class, 'destroy']);
 });

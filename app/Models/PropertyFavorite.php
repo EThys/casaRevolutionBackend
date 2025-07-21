@@ -22,12 +22,12 @@ class PropertyFavorite extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'UserId', 'UserId');
     }
 
     public function property()
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(Property::class, 'PropertyId', 'PropertyId');
     }
 
 }

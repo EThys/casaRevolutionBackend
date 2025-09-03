@@ -19,6 +19,9 @@ return new class extends Migration
             $table->integer('surface');
             $table->integer('rooms');
             $table->integer('bedrooms');
+            $table->integer('kitchen');
+            $table->integer('living_room');
+            $table->integer('bathroom');
             $table->integer('floor')->nullable();
             $table->string('address');
             $table->string('commune');

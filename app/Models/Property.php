@@ -19,6 +19,7 @@ class Property extends Model
     public $timestamps = false;
     public $table="TProperties";
 
+
     protected $fillable = [
         'title',
         'description',
@@ -26,30 +27,30 @@ class Property extends Model
         'surface',
         'rooms',
         'bedrooms',
+        'kitchen',
+        'living_room',
+        'bathroom',
         'floor',
         'address',
-        'commune',
         'city',
         'postalCode',
+        'district',
+        'commune',
+        'quartier',
         'sold',
-        'transactionType', // 'avendre' or 'location'
+        'transactionType',
         'PropertyTypeId',
         'UserId',
         'latitude',
-        'isAvailable',
         'longitude',
-        'PropertyFeatureId',
-        'PropertyImageId',
+        'isAvailable'
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
+    public function propertyType(){
+        return $this->belongsTo(PropertyType::class, 'PropertyTypeId', 'PropertyTypeId');
     }
 
-    public function propertyType()
-    {
-        return $this->belongsTo(PropertyType::class);
+    public function user(){
+        return $this->belongsTo(User::class, 'UserId', 'UserId');
     }
 
     public function features()

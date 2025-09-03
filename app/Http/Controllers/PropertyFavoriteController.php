@@ -17,7 +17,7 @@ class PropertyFavoriteController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $favorites,
+            'data' =>  $favorites->load(['property.images', 'user'])
         ]);
     }
 
@@ -43,7 +43,7 @@ class PropertyFavoriteController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $favorites,
+            'data' => $favorites->load(['property.images', 'user']),
         ]);
     }
 

@@ -34,8 +34,7 @@ class PropertyController extends Controller
         }
     }
 
-        public function store(Request $request)
-    {
+    public function store(Request $request){
         try {
             $validator = Validator::make($request->all(), [
                 'title' => 'required|string|max:255',
@@ -44,10 +43,16 @@ class PropertyController extends Controller
                 'surface' => 'required|numeric|min:0',
                 'rooms' => 'required|integer|min:0',
                 'bedrooms' => 'required|integer|min:0',
+                'kitchen' => 'required|integer|min:0',
+                'living_room'  => 'required|integer|min:0',
+                'bathroom'  => 'required|integer|min:0',
                 'floor' => 'nullable|integer',
                 'address' => 'required|string',
                 'city' => 'required|string',
                 'postalCode' => 'required|string',
+                'district' => 'required|string|max:255',
+                'commune' => 'required|string|max:255',
+                'quartier' => 'required|string|max:255',
                 'sold' => 'boolean',
                 'transactionType' => 'required|in:vente,location',
                 'PropertyTypeId' => 'required|exists:TPropertyTypes,PropertyTypeId',
@@ -152,7 +157,6 @@ class PropertyController extends Controller
         }
     }
 
-
     public function show($id)
     {
         try {
@@ -201,10 +205,16 @@ class PropertyController extends Controller
                 'surface' => 'sometimes|numeric|min:0',
                 'rooms' => 'sometimes|integer|min:0',
                 'bedrooms' => 'sometimes|integer|min:0',
+                'kitchen' => 'required|integer|min:0',
+                'living_room'  => 'required|integer|min:0',
+                'bathroom'  => 'required|integer|min:0',
                 'floor' => 'nullable|integer',
                 'address' => 'sometimes|string',
                 'city' => 'sometimes|string',
                 'postalCode' => 'sometimes|string',
+                'district' => 'sometimes|string|max:255',
+                'commune' => 'sometimes|string|max:255',
+                'quartier' => 'sometimes|string|max:255',
                 'sold' => 'boolean',
                 'transactionType' => 'sometimes|in:avendre,location',
                 'PropertyTypeId' => 'sometimes|exists:TPropertyTypes,PropertyTypeId',
@@ -223,11 +233,6 @@ class PropertyController extends Controller
 
             if ($validator->fails()) {
                 $errors = $validator->errors();
-
-                // $customErrors = [];
-                // foreach ($errors->messages() as $field => $messages) {
-                //     $customErrors[$field] = $messages[0];
-                // }
 
                 return response()->json([
                     'success' => false,

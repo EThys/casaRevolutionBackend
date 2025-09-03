@@ -132,7 +132,7 @@ class CommissionnaireController extends Controller
         }
 
         // Création du fullname
-        $request['fullname'] = $request->first_name . ' ' . $request->last_name;
+        $request['fullname'] = $request->first_name . '  ' . $request->last_name;
 
         try {
             $message = "Ce commissionnaire est déjà enregistré.";

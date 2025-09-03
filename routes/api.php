@@ -84,5 +84,5 @@ Route::middleware('auth:sanctum')->group(function () {
     //ROUTES POUR LES FAVORIES
     Route::apiResource('property-favorites', PropertyFavoriteController::class);
     Route::get('users/{user}/favorites', [PropertyFavoriteController::class, 'getById']);
-    Route::delete('property-favorites/remove', [PropertyFavoriteController::class, 'destroy']);
+    Route::post('property-favorites/remove', [PropertyFavoriteController::class, 'destroy']);
 });
